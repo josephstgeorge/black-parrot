@@ -122,6 +122,7 @@ module bp_be_dcache_wbuf
 
   // wbuf queue
   //
+  // TODO: Pull the snoop outputs out of this module
   bp_be_dcache_wbuf_queue
     #(.width_p(wbuf_entry_width_lp))
     wbq

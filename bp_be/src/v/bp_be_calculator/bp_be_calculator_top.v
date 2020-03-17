@@ -184,7 +184,10 @@ else
     assign bypass_rs2 = bypass_irs2;
   end
 
-// Bypass the instruction operands from written registers in the stack
+// Bypass the instruction operands from written registers in the stack.
+   
+// TODO: Add one to the pipe_stage_els_lp, turn it into another parameter, and put that for the parameter
+// for int_bypass.
 bp_be_bypass 
  // Don't need to forward isd data
  #(.fwd_els_p(pipe_stage_els_lp-1))
@@ -389,6 +392,12 @@ always_comb
         calc_status.dep_status[i].mul_iwb_v = calc_stage_r[i].pipe_mul_v 
                                               & ~exc_stage_n[i+1].poison_v
                                               & calc_stage_r[i].irf_w_v;
+	 
+	// TODO: Need if statement dictating that for the second mem pipeline stage it should additionally check
+	// whether or not the instruction is a load and whether or not that load address is in the write buffer.
+	// If the instruction is a load and the load address is not in the write buffer, there is no dependency
+	// for that mem stage.
+ 
         calc_status.dep_status[i].mem_iwb_v = calc_stage_r[i].pipe_mem_v 
                                               & ~exc_stage_n[i+1].poison_v
                                               & calc_stage_r[i].irf_w_v;
@@ -404,6 +413,9 @@ always_comb
       end
 
     // Slicing the completion pipe for Forwarding information
+
+    // TODO: Add the additional bypass stage either between mem and mul or between mul and int, not sure yet.
+    // Choose the option for whether mul or 2 cycle load should take precedence on a given cycle.
     for (integer i = 1; i < pipe_stage_els_lp; i++) 
       begin : comp_stage_slice
         comp_stage_n_slice_iwb_v[i]   = calc_stage_r[i-1].irf_w_v & ~exc_stage_n[i].poison_v; 

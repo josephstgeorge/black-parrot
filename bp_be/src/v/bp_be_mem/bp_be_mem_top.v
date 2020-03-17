@@ -373,6 +373,7 @@ bp_be_dcache
     ,.ready_o(dcache_ready_lo)
 
     ,.v_o(dcache_v)
+    // TODO: Forward dcache_data out of the mem_top module
     ,.data_o(dcache_data)
 
     ,.tlb_miss_i(dcache_tlb_miss)
