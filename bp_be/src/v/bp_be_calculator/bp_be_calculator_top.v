@@ -73,6 +73,9 @@ module bp_be_calculator_top
   , output                              csr_cmd_v_o
   , input                               csr_cmd_ready_i
 
+  , input [dword_width_p-1:0]           data_tl_i
+  , input                               tl_v_i
+
   , input [mem_resp_width_lp-1:0]       mem_resp_i
   , input                               mem_resp_v_i
   , output                              mem_resp_ready_o
@@ -186,11 +189,30 @@ else
 
 // Bypass the instruction operands from written registers in the stack.
    
-// TODO: Add one to the pipe_stage_els_lp, turn it into another parameter, and put that for the parameter
-// for int_bypass.
+//Registers the incoming data_tl_i, and tl_v_i values
+
+logic [dword_width_p-1:0] data_tl;
+logic tl_v;
+ 
+bsg_dff
+ #(.width_p(dword_width_p))
+ data_tl_reg
+  (.clk_i(clk_i)
+   ,.data_i(data_tl_i)
+   ,.data_o(data_tl)
+   );
+
+bsg_dff
+ #(.width_p(1))
+ tl_v_reg
+  (.clk_i(clk_i)
+   ,.data_i(tl_v_i)
+   ,.data_o(tl_v)
+   );
+   
 bp_be_bypass 
  // Don't need to forward isd data
- #(.fwd_els_p(pipe_stage_els_lp-1))
+ #(.fwd_els_p((pipe_stage_els_lp/* + 1*/)-1))
  int_bypass 
   (.id_rs1_addr_i(dispatch_pkt.instr.fields.rtype.rs1_addr)
    ,.id_rs1_i(dispatch_pkt.rs1)
@@ -198,9 +220,9 @@ bp_be_bypass
    ,.id_rs2_addr_i(dispatch_pkt.instr.fields.rtype.rs2_addr)
    ,.id_rs2_i(dispatch_pkt.rs2)
 
-   ,.fwd_rd_v_i(comp_stage_n_slice_iwb_v)
-   ,.fwd_rd_addr_i(comp_stage_n_slice_rd_addr)
-   ,.fwd_rd_i(comp_stage_n_slice_rd)
+   ,.fwd_rd_v_i({comp_stage_n_slice_iwb_v[4:3]/*, tl_v*/, comp_stage_n_slice_iwb_v[2:1]})
+   ,.fwd_rd_addr_i({comp_stage_n_slice_rd_addr[4:3]/*, comp_stage_n_slice_rd_addr[2]*/, comp_stage_n_slice_rd_addr[2:1]})
+   ,.fwd_rd_i({comp_stage_n_slice_rd[4:3]/*, data_tl*/, comp_stage_n_slice_rd[2:1]})
 
    ,.bypass_rs1_o(bypass_irs1)
    ,.bypass_rs2_o(bypass_irs2)
@@ -398,9 +420,14 @@ always_comb
 	// If the instruction is a load and the load address is not in the write buffer, there is no dependency
 	// for that mem stage.
  
-        calc_status.dep_status[i].mem_iwb_v = calc_stage_r[i].pipe_mem_v 
-                                              & ~exc_stage_n[i+1].poison_v
-                                              & calc_stage_r[i].irf_w_v;
+        calc_status.dep_status[i].mem_iwb_v = (i == 1) 
+	                                      ? (calc_stage_r[i].pipe_mem_v 
+                                                & ~exc_stage_n[i+1].poison_v
+                                                & calc_stage_r[i].irf_w_v
+						/*& tl_v*/) 
+                                              : (calc_stage_r[i].pipe_mem_v 
+                                                & ~exc_stage_n[i+1].poison_v
+                                                & calc_stage_r[i].irf_w_v);
         calc_status.dep_status[i].mem_fwb_v = calc_stage_r[i].pipe_mem_v 
                                               & ~exc_stage_n[i+1].poison_v
                                               & calc_stage_r[i].frf_w_v;
@@ -415,7 +442,7 @@ always_comb
     // Slicing the completion pipe for Forwarding information
 
     // TODO: Add the additional bypass stage either between mem and mul or between mul and int, not sure yet.
-    // Choose the option for whether mul or 2 cycle load should take precedence on a given cycle.
+    // Choose the option for whether mul or 2 cycle load should take precedence on a given 
     for (integer i = 1; i < pipe_stage_els_lp; i++) 
       begin : comp_stage_slice
         comp_stage_n_slice_iwb_v[i]   = calc_stage_r[i-1].irf_w_v & ~exc_stage_n[i].poison_v; 
