@@ -109,6 +109,11 @@ logic csr_cmd_v, csr_cmd_rdy;
 bp_be_mem_resp_s mem_resp;
 logic mem_resp_v, mem_resp_rdy;
 
+logic [dword_width_p-1:0] data_tl;
+logic 		          tl_v;
+   
+   
+
 logic [tlb_entry_width_lp-1:0]  itlb_fill_entry;
 logic [vaddr_width_p-1:0]       itlb_fill_vaddr;
 logic                           itlb_fill_v;
@@ -202,6 +207,9 @@ bp_be_calculator_top
    ,.csr_cmd_v_o(csr_cmd_v)
    ,.csr_cmd_ready_i(csr_cmd_rdy)
 
+   ,.data_tl_i(data_tl)
+   ,.tl_v_i(tl_v)
+
    ,.mem_resp_i(mem_resp) 
    ,.mem_resp_v_i(mem_resp_v)
    ,.mem_resp_ready_o(mem_resp_rdy)   
@@ -229,6 +237,9 @@ bp_be_mem_top
     ,.csr_cmd_i(csr_cmd)
     ,.csr_cmd_v_i(csr_cmd_v)
     ,.csr_cmd_ready_o(csr_cmd_rdy)
+
+    ,.data_tl_o(data_tl)
+    ,.tl_v_o(tl_v)
 
     ,.mem_resp_o(mem_resp)
     ,.mem_resp_v_o(mem_resp_v)

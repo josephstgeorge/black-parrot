@@ -63,6 +63,9 @@ module bp_be_mem_top
 
    , input                                   chk_poison_ex_i
 
+   , output [dword_width_p-1:0]              data_tl_o
+   , output                                  tl_v_o
+
    , output [mem_resp_width_lp-1:0]          mem_resp_o
    , output                                  mem_resp_v_o
    , input                                   mem_resp_ready_i
@@ -371,9 +374,10 @@ bp_be_dcache
     ,.dcache_pkt_i(dcache_pkt)
     ,.v_i(dcache_pkt_v)
     ,.ready_o(dcache_ready_lo)
+    ,.data_tl_o(data_tl_o)
+    ,.tl_v_o(tl_v_o)
 
     ,.v_o(dcache_v)
-    // TODO: Forward dcache_data out of the mem_top module
     ,.data_o(dcache_data)
 
     ,.tlb_miss_i(dcache_tlb_miss)

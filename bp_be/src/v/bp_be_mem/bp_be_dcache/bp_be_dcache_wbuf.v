@@ -45,6 +45,10 @@ module bp_be_dcache_wbuf
     , input [index_width_lp-1:0] lce_snoop_index_i
     , input [way_id_width_lp-1:0] lce_snoop_way_i
     , output logic lce_snoop_match_o
+    , output logic tag_hit_o
+   // if ptag_i gets optimized these may prove useful, but currently they do not
+   // , output logic [wbuf_entry_width_lp-1:0] wbuf_entry_el0_o
+   // , output logic el0_valid_o
   );
 
   `declare_bp_be_dcache_wbuf_entry_s(paddr_width_p, data_width_p, ways_p);
@@ -54,6 +58,8 @@ module bp_be_dcache_wbuf
   
   bp_be_dcache_wbuf_entry_s wbuf_entry_el0;
   bp_be_dcache_wbuf_entry_s wbuf_entry_el1;
+  // assign wbuf_entry_el0_o = wbuf_entry_el0;
+   
 
   logic [1:0] num_els_r;
 
@@ -153,6 +159,9 @@ module bp_be_dcache_wbuf
   assign tag_hit1 = tag_hit1_n & el1_valid;
   assign tag_hit2 = tag_hit2_n & v_i;
 
+  assign tag_hit_o = (tag_hit0 | tag_hit1 | tag_hit2) & bypass_v_i;
+   
+
   logic [data_mask_width_lp-1:0] tag_hit0x4;
   logic [data_mask_width_lp-1:0] tag_hit1x4;
   logic [data_mask_width_lp-1:0] tag_hit2x4;
@@ -221,5 +230,7 @@ module bp_be_dcache_wbuf
     & (lce_snoop_way_i == wbuf_entry_el1.way_id);
 
   assign lce_snoop_match_o = lce_snoop_el2_match | lce_snoop_el0_match | lce_snoop_el1_match;
+
+  // assign el0_valid_o = el0_valid;
 
 endmodule
