@@ -288,6 +288,17 @@ module bp_be_dcache
   always_ff @ (posedge clk_i) begin
     if (reset_i) begin
       v_tl_r <= 1'b0;
+      lr_op_tl_r <= '0;
+      sc_op_tl_r <= '0;
+      load_op_tl_r <= '0;
+      store_op_tl_r <= '0;
+      signed_op_tl_r <= '0;  
+      size_op_tl_r <= e_byte;
+      double_op_tl_r <= '0;
+      word_op_tl_r <= '0;  
+      half_op_tl_r <= '0;
+      byte_op_tl_r <= '0;
+      page_offset_tl_r <= '0;
     end
     else begin 
       v_tl_r <= tl_we;
@@ -400,14 +411,6 @@ module bp_be_dcache
     ,.data_o(ld_data_final)
   );
 
- /* bsg_mux #(
-    .width_p(dword_width_p)
-    ,.els_p(2)
-  ) ld_data_blank_mux (
-    .data_i({ld_data_way_picked_tl,64'd0})
-    ,.sel_i(tag_hit)
-    ,.data_o(ld_data_final)
-  );*/
    
 
   if (dword_width_p == 64) begin: output64_tl
@@ -467,7 +470,7 @@ module bp_be_dcache
 
   end 
 
-  assign tl_v_o = ~wbuf_tag_hit & load_op_tl_r;
+  assign tl_v_o = ~wbuf_tag_hit & load_op_tl_r & tag_hit & ~lr_op_tl_r;
    
   // TV stage
   //

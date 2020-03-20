@@ -189,26 +189,7 @@ else
 
 // Bypass the instruction operands from written registers in the stack.
    
-//Registers the incoming data_tl_i, and tl_v_i values
-
-logic [dword_width_p-1:0] data_tl;
-logic tl_v;
  
-bsg_dff
- #(.width_p(dword_width_p))
- data_tl_reg
-  (.clk_i(clk_i)
-   ,.data_i(data_tl_i)
-   ,.data_o(data_tl)
-   );
-
-bsg_dff
- #(.width_p(1))
- tl_v_reg
-  (.clk_i(clk_i)
-   ,.data_i(tl_v_i)
-   ,.data_o(tl_v)
-   );
    
 bp_be_bypass 
  // Don't need to forward isd data
@@ -220,9 +201,9 @@ bp_be_bypass
    ,.id_rs2_addr_i(dispatch_pkt.instr.fields.rtype.rs2_addr)
    ,.id_rs2_i(dispatch_pkt.rs2)
 
-   ,.fwd_rd_v_i({comp_stage_n_slice_iwb_v[4:3]/*, tl_v*/, comp_stage_n_slice_iwb_v[2:1]})
+   ,.fwd_rd_v_i({comp_stage_n_slice_iwb_v[4:3]/*, tl_v_i & comp_stage_n_slice_iwb_v[2]*/, comp_stage_n_slice_iwb_v[2:1]})
    ,.fwd_rd_addr_i({comp_stage_n_slice_rd_addr[4:3]/*, comp_stage_n_slice_rd_addr[2]*/, comp_stage_n_slice_rd_addr[2:1]})
-   ,.fwd_rd_i({comp_stage_n_slice_rd[4:3]/*, data_tl*/, comp_stage_n_slice_rd[2:1]})
+   ,.fwd_rd_i({comp_stage_n_slice_rd[4:3]/*, data_tl_i*/, comp_stage_n_slice_rd[2:1]})
 
    ,.bypass_rs1_o(bypass_irs1)
    ,.bypass_rs2_o(bypass_irs2)
@@ -424,7 +405,7 @@ always_comb
 	                                      ? (calc_stage_r[i].pipe_mem_v 
                                                 & ~exc_stage_n[i+1].poison_v
                                                 & calc_stage_r[i].irf_w_v
-						/*& tl_v*/) 
+						/*& ~tl_v_i*/) 
                                               : (calc_stage_r[i].pipe_mem_v 
                                                 & ~exc_stage_n[i+1].poison_v
                                                 & calc_stage_r[i].irf_w_v);
