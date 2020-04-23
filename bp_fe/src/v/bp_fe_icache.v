@@ -189,7 +189,30 @@ module bp_fe_icache
       ,.w_i(data_mem_w_li)
       ,.data_o(data_mem_data_lo[bank])
     );
-  end                                             
+  end   
+
+  logic [tag_width_lp-1:0]    addr_tag_tl;
+  logic [lce_assoc_p-1:0]     hit_v_tl;
+  logic [way_id_width_lp-1:0] hit_index_tl;
+  logic                       hit_tl;
+  logic [paddr_width_p-1:0]   addr_tl;
+   
+  assign addr_tl = {ptag_i, vaddr_tl_r[0+:bp_page_offset_width_gp]};
+  assign addr_tag_tl = addr_tl[block_offset_width_lp+index_width_lp+:tag_width_lp];
+
+  for (genvar i = 0; i < lce_assoc_p; i++) begin: tag_comp_tl
+    assign hit_v_tl[i]   = (tag_tl[i] == addr_tag_tl) && (state_tl[i] != e_COH_I);
+
+  end     
+
+  bsg_priority_encode #(
+    .width_p(lce_assoc_p)
+    ,.lo_to_hi_p(1)
+  ) pe_load_hit (
+    .i(hit_v_tl)
+    ,.v_o(hit_tl)
+    ,.addr_o(hit_index_tl)
+  );
 
   // TV stage
   logic v_tv_r;
@@ -200,10 +223,12 @@ module bp_fe_icache
   logic [lce_assoc_p-1:0][tag_width_lp-1:0]     tag_tv_r;
   logic [lce_assoc_p-1:0][`bp_coh_bits-1:0]     state_tv_r;
   logic [lce_assoc_p-1:0][dword_width_p-1:0]    ld_data_tv_r;
-  logic [tag_width_lp-1:0]                      addr_tag_tv;
+  logic [tag_width_lp-1:0]                      addr_tag_tv_r;
   logic [index_width_lp-1:0]                    addr_index_tv;
   logic [word_offset_width_lp-1:0]              addr_word_offset_tv;
   logic                                         fencei_op_tv_r;
+  logic [way_id_width_lp-1:0] 			hit_index_tv_r;
+  logic 					hit_tv_r;
 
   // Flush ops are non-speculative and so cannot be poisoned
   assign tv_we = v_tl_r & ((~poison_i & ptag_v_i) | fencei_op_tl_r) & ~fencei_req;
@@ -217,42 +242,36 @@ module bp_fe_icache
     else begin
       v_tv_r <= tv_we;
       if (tv_we) begin
-        addr_tv_r    <= {ptag_i, vaddr_tl_r[0+:bp_page_offset_width_gp]};
+        addr_tv_r    <= addr_tl;
         vaddr_tv_r   <= vaddr_tl_r;
         tag_tv_r     <= tag_tl;
         state_tv_r   <= state_tl;
         ld_data_tv_r <= data_mem_data_lo;
         uncached_tv_r <= uncached_i;
         fencei_op_tv_r <= fencei_op_tl_r;
+	hit_index_tv_r <= hit_index_tl;
+	hit_tv_r       <= hit_tl;
+	addr_tag_tv_r  <= addr_tag_tl;
+	 
+ 
       end
     end
   end
 
-  assign addr_tag_tv = addr_tv_r[block_offset_width_lp+index_width_lp+:tag_width_lp];
   assign addr_index_tv = addr_tv_r[block_offset_width_lp+:index_width_lp];
   assign addr_word_offset_tv = addr_tv_r[byte_offset_width_lp+:word_offset_width_lp];
 
   //cache hit?
-  logic [lce_assoc_p-1:0]     hit_v;
-  logic [way_id_width_lp-1:0] hit_index;
-  logic                       hit;
+  
 
-  for (genvar i = 0; i < lce_assoc_p; i++) begin: tag_comp
-    assign hit_v[i]   = (tag_tv_r[i] == addr_tag_tv) && (state_tv_r[i] != e_COH_I);
+  for (genvar i = 0; i < lce_assoc_p; i++) begin: tag_comp_tv
     assign way_v[i]   = (state_tv_r[i] != e_COH_I);
   end
 
-  bsg_priority_encode #(
-    .width_p(lce_assoc_p)
-    ,.lo_to_hi_p(1)
-  ) pe_load_hit (
-    .i(hit_v)
-    ,.v_o(hit)
-    ,.addr_o(hit_index)
-  );
+
 
   logic miss_tv;
-  assign miss_tv = ~hit & v_tv_r & ~uncached_tv_r;
+  assign miss_tv = ~hit_tv_r & v_tv_r & ~uncached_tv_r;
 
   // uncached request
   logic uncached_load_data_v_r;
@@ -375,7 +394,7 @@ module bp_fe_icache
     ,.els_p(lce_assoc_p)
   ) data_set_select_mux (
     .data_i(ld_data_tv_r)
-    ,.sel_i(hit_index ^ addr_word_offset_tv)
+    ,.sel_i(hit_index_tv_r ^ addr_word_offset_tv)
     ,.data_o(ld_data_way_picked)
   );
 
@@ -486,7 +505,7 @@ module bp_fe_icache
   bsg_lru_pseudo_tree_decode #(
      .ways_p(lce_assoc_p)
   ) lru_decode (
-     .way_id_i(hit_index)
+     .way_id_i(hit_index_tv_r)
      ,.data_o(lru_decode_data_lo)
      ,.mask_o(lru_decode_mask_lo)
   );
