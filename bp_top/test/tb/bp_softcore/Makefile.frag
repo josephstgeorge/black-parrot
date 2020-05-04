@@ -6,7 +6,7 @@ DCACHE_TRACE_P ?= 0
 NPC_TRACE_P    ?= 0
 VM_TRACE_P     ?= 0
 PRELOAD_MEM_P  ?= 1
-LOAD_NBF_P     ?= 0
+LOAD_NBF_P     ?= 1
 COSIM_P        ?= 0
 
 export DUT_PARAMS = 
