@@ -327,7 +327,7 @@ module bp_be_dcache
       ,.els_p(dcache_sets_p)
     )
     tag_mem
-      (.clk_i(clk_i)
+      (.clk_i(~clk_i)
       ,.reset_i(reset_i)
       ,.v_i(~reset_i & tag_mem_v_li)
       ,.w_i(tag_mem_w_li)
@@ -352,7 +352,7 @@ module bp_be_dcache
         ,.els_p(dcache_sets_p*dcache_assoc_p)
         )
       data_mem
-        (.clk_i(clk_i)
+        (.clk_i(~clk_i)
         ,.reset_i(reset_i)
         ,.v_i(~reset_i & data_mem_v_li[i])
         ,.w_i(data_mem_w_li)
@@ -408,10 +408,97 @@ module bp_be_dcache
       ,.addr_o(store_hit_way_tl)
       );
 
-  // TV stage
+  // TV stage (Negedge)
   //
-  logic v_tv_r;
   logic tv_we;
+  logic neg_lr_op_tv_r;
+  logic neg_sc_op_tv_r;
+  logic neg_load_op_tv_r;
+  logic neg_store_op_tv_r;
+  logic neg_signed_op_tv_r;
+  size_op_e  neg_size_op_tv_r;
+  logic neg_double_op_tv_r;
+  logic neg_word_op_tv_r;
+  logic neg_half_op_tv_r;
+  logic neg_byte_op_tv_r;
+  logic neg_fencei_op_tv_r;
+  logic neg_uncached_tv_r;
+  logic [paddr_width_p-1:0] neg_paddr_tv_r;
+  logic [dword_width_p-1:0] neg_data_tv_r;
+  bp_be_dcache_tag_info_s [dcache_assoc_p-1:0] neg_tag_info_tv_r;
+  logic [dcache_assoc_p-1:0][bank_width_lp-1:0] neg_ld_data_tv_r;
+  logic [ptag_width_lp-1:0] neg_addr_tag_tv;
+  logic [index_width_lp-1:0] neg_addr_index_tv;
+  logic [word_offset_width_lp-1:0] neg_addr_word_offset_tv;
+  logic [dcache_assoc_p-1:0] neg_tag_match_tv;
+  logic [dcache_assoc_p-1:0] neg_load_hit_tv;
+  logic [dcache_assoc_p-1:0] neg_store_hit_tv;
+  logic neg_load_hit;
+  logic neg_store_hit;
+  logic [way_id_width_lp-1:0] neg_load_hit_way;
+  logic [way_id_width_lp-1:0] neg_store_hit_way;
+  logic [dcache_assoc_p-1:0] neg_invalid_tv;
+
+  assign store_op_tl_o = v_tl_r & ~tlb_miss_i & store_op_tl_r;
+  assign load_op_tl_o  = v_tl_r & ~tlb_miss_i & load_op_tl_r;
+
+  always_ff @ (negedge clk_i) begin
+    if (reset_i) begin       
+      neg_lr_op_tv_r <= '0;
+      neg_sc_op_tv_r <= '0;
+      neg_load_op_tv_r <= '0;
+      neg_store_op_tv_r <= '0;
+      neg_uncached_tv_r <= '0;
+      neg_signed_op_tv_r <= '0;
+      neg_size_op_tv_r <= e_byte;
+      neg_double_op_tv_r <= '0;
+      neg_word_op_tv_r <= '0;
+      neg_half_op_tv_r <= '0;
+      neg_byte_op_tv_r <= '0;
+      neg_fencei_op_tv_r <= '0;
+      neg_paddr_tv_r <= '0;
+      neg_tag_info_tv_r <= '0;
+      neg_tag_match_tv <= '0;
+      neg_load_hit_tv <= '0;
+      neg_store_hit_tv <= '0;
+      neg_load_hit <= '0;
+      neg_store_hit <= '0;
+      neg_load_hit_way <= '0;
+      neg_store_hit_way <= '0;
+      neg_addr_tag_tv <= '0;
+      neg_invalid_tv <= '0;
+    end
+    else begin
+      neg_lr_op_tv_r <= lr_op_tl_r;
+      neg_sc_op_tv_r <= sc_op_tl_r;
+      neg_load_op_tv_r <= load_op_tl_r;
+      neg_store_op_tv_r <= store_op_tl_r;
+      neg_signed_op_tv_r <= signed_op_tl_r;
+      neg_size_op_tv_r <= size_op_tl_r;
+      neg_double_op_tv_r <= double_op_tl_r;
+      neg_word_op_tv_r <= word_op_tl_r;
+      neg_half_op_tv_r <= half_op_tl_r;
+      neg_byte_op_tv_r <= byte_op_tl_r;
+      neg_fencei_op_tv_r <= fencei_op_tl_r;
+      neg_paddr_tv_r <= paddr_tl;
+      neg_tag_info_tv_r <= tag_mem_data_lo;
+      neg_uncached_tv_r <= uncached_i;
+      neg_tag_match_tv <= tag_match_tl;
+      neg_load_hit_tv <= load_hit_tl;
+      neg_store_hit_tv <= store_hit_tl;
+      neg_load_hit <= load_hit_v_tl;
+      neg_store_hit <= store_hit_v_tl;
+      neg_load_hit_way <= load_hit_way_tl;
+      neg_store_hit_way <= store_hit_way_tl;
+      neg_addr_tag_tv <= addr_tag_tl;
+      neg_invalid_tv <= invalid_tl;
+      neg_ld_data_tv_r <= data_mem_data_lo;
+      neg_data_tv_r <= data_tl_r;
+    end
+  end 
+
+  //TV Stage (Posedge)
+  logic v_tv_r;
   logic lr_op_tv_r;
   logic sc_op_tv_r;
   logic load_op_tv_r;
@@ -442,13 +529,9 @@ module bp_be_dcache
 
   assign tv_we = v_tl_r & ~poison_i & ~tlb_miss_i & ~fencei_req;
 
-  assign store_op_tl_o = v_tl_r & ~tlb_miss_i & store_op_tl_r;
-  assign load_op_tl_o  = v_tl_r & ~tlb_miss_i & load_op_tl_r;
-
-  always_ff @ (posedge clk_i) begin
+  always_ff @(posedge clk_i) begin
     if (reset_i) begin
-      v_tv_r <= 1'b0;
-
+      v_tv_r <= 1'b0; 
       lr_op_tv_r <= '0;
       sc_op_tv_r <= '0;
       load_op_tv_r <= '0;
@@ -475,40 +558,36 @@ module bp_be_dcache
     end
     else begin
       v_tv_r <= tv_we;
-
       if (tv_we) begin
-        lr_op_tv_r <= lr_op_tl_r;
-        sc_op_tv_r <= sc_op_tl_r;
-        load_op_tv_r <= load_op_tl_r;
-        store_op_tv_r <= store_op_tl_r;
-        signed_op_tv_r <= signed_op_tl_r;
-        size_op_tv_r <= size_op_tl_r;
-        double_op_tv_r <= double_op_tl_r;
-        word_op_tv_r <= word_op_tl_r;
-        half_op_tv_r <= half_op_tl_r;
-        byte_op_tv_r <= byte_op_tl_r;
-        fencei_op_tv_r <= fencei_op_tl_r;
-        paddr_tv_r <= paddr_tl;
-        tag_info_tv_r <= tag_mem_data_lo;
-        uncached_tv_r <= uncached_i;
-        tag_match_tv <= tag_match_tl;
-        load_hit_tv <= load_hit_tl;
-        store_hit_tv <= store_hit_tl;
-        load_hit <= load_hit_v_tl;
-        store_hit <= store_hit_v_tl;
-        load_hit_way <= load_hit_way_tl;
-        store_hit_way <= store_hit_way_tl;
-        addr_tag_tv <= addr_tag_tl;
-        invalid_tv <= invalid_tl;
-      end
-
-      if (tv_we & load_op_tl_r) begin
-        ld_data_tv_r <= data_mem_data_lo;
-      end
-
-      if (tv_we & store_op_tl_r) begin
-        data_tv_r <= data_tl_r;
-      end
+        lr_op_tv_r <= neg_lr_op_tv_r;
+        sc_op_tv_r <= neg_sc_op_tv_r;
+        load_op_tv_r <= neg_load_op_tv_r;
+        store_op_tv_r <= neg_store_op_tv_r;
+        signed_op_tv_r <= neg_signed_op_tv_r;
+        size_op_tv_r <= neg_size_op_tv_r;
+        double_op_tv_r <= neg_double_op_tv_r;
+        word_op_tv_r <= neg_word_op_tv_r;
+        half_op_tv_r <= neg_half_op_tv_r;
+        byte_op_tv_r <= neg_byte_op_tv_r;
+        fencei_op_tv_r <= neg_fencei_op_tv_r;
+        paddr_tv_r <= neg_paddr_tv_r;
+        tag_info_tv_r <= neg_tag_info_tv_r;
+        uncached_tv_r <= neg_uncached_tv_r;
+        tag_match_tv <= neg_tag_match_tv;
+        load_hit_tv <= neg_load_hit_tv;
+        store_hit_tv <= neg_store_hit_tv;
+        load_hit <= neg_load_hit;
+        store_hit <= neg_store_hit;
+        load_hit_way <= neg_load_hit_way;
+        store_hit_way <= neg_store_hit_way;
+        addr_tag_tv <= neg_addr_tag_tv;
+        invalid_tv <= neg_invalid_tv;
+      end 
+      if (tv_we && neg_load_op_tv_r) 
+	ld_data_tv_r <= neg_ld_data_tv_r;
+	 
+      if (tv_we && neg_store_op_tv_r)
+        data_tv_r <= neg_data_tv_r;
     end
   end
 
