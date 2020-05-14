@@ -16,7 +16,7 @@ module bp_fe_bht
    , parameter debug_p             = 0
 
    , localparam els_lp             = 2**bht_idx_width_p
-   , localparam saturation_size_lp = 2
+   , localparam saturation_size_lp = 3
    )
   (input                         clk_i
    , input                       reset_i
@@ -48,11 +48,11 @@ assign predict_o = r_v_r ? mem[idx_r_r][1] : `BSG_UNDEFINED_IN_SIM(1'b0);
 //2-bit saturating counter(high_bit:prediction direction,low_bit:strong/weak prediction)
 always_ff @(posedge clk_i) 
   if (reset_i) 
-    mem <= '{default:2'b01};
+    mem <= '{default:3'b001};
   else if (w_v_i & correct_i)
-    mem[idx_w_i] <= {mem[idx_w_i][1], 1'b0};
+    mem[idx_w_i] <= {mem[idx_w_i][2], mem[idx_w_i][0], 1'b0};
   else if (w_v_i & ~correct_i)
-    mem[idx_w_i] <= {mem[idx_w_i][1]^mem[idx_w_i][0], 1'b1};
+    mem[idx_w_i] <= {mem[idx_w_i][2]^(mem[idx_w_i][1]&mem[idx_w_i][0]), 1'b1, mem[idx_w_i][1]};
 
 
 //synopsys translate_off
